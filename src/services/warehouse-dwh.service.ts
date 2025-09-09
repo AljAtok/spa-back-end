@@ -1,0 +1,174 @@
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import * as mysql from "mysql2/promise";
+import { Warehouse } from "../entities/Warehouse";
+import { WarehouseDwhLog } from "../entities/WarehouseDwhLog";
+
+@Injectable()
+export class WarehouseDwhService {
+  constructor(
+    @InjectRepository(Warehouse)
+    private warehouseRepository: Repository<Warehouse>,
+    @InjectRepository(WarehouseDwhLog)
+    private logRepository: Repository<WarehouseDwhLog>
+  ) {}
+
+  async pullAndInsertFromOutlets(
+    batchSize = 1000,
+    accessKeyId: number = 1
+  ): Promise<{
+    success: number;
+    failed: number;
+  }> {
+    const sourceConn = await mysql.createConnection({
+      host: "192.168.74.121",
+      user: "ctgi_cms_rem_usr",
+      password: "B@v1CM$r3m0t3Localdba@C3sS",
+      database: "ctgi_sems",
+    });
+    const [rows] = await sourceConn.execute(
+      `SELECT outletIFS, outletCode, outletDesc, brnID, ownID, address, status FROM outlets`
+    );
+    let success = 0;
+    let failed = 0;
+    const total = (rows as any[]).length;
+    for (let i = 0; i < total; i += batchSize) {
+      let batch = (rows as any[]).slice(i, i + batchSize);
+      // Filter out duplicates within the batch by warehouse_ifs, warehouse_code, warehouse_name
+      const seenIfs = new Set();
+      const seenCode = new Set();
+      const seenName = new Set();
+      batch = batch.filter((row) => {
+        const ifsKey = row.outletIFS;
+        const codeKey = row.outletCode;
+        const nameKey = row.outletDesc;
+        if (
+          seenIfs.has(ifsKey) ||
+          seenCode.has(codeKey) ||
+          seenName.has(nameKey)
+        ) {
+          return false;
+        }
+        seenIfs.add(ifsKey);
+        seenCode.add(codeKey);
+        seenName.add(nameKey);
+        return true;
+      });
+      for (const row of batch) {
+        try {
+          // 1. Try to find by full unique combination
+          let existing = await this.warehouseRepository.findOne({
+            where: {
+              warehouse_ifs: row.outletIFS,
+              warehouse_code: row.outletCode,
+              warehouse_name: row.outletDesc,
+            },
+          });
+          // 2. If not found, check individually by warehouse_ifs, warehouse_code, warehouse_name
+          if (!existing) {
+            existing = await this.warehouseRepository.findOne({
+              where: { warehouse_ifs: row.outletIFS },
+            });
+            if (!existing) {
+              existing = await this.warehouseRepository.findOne({
+                where: { warehouse_code: row.outletCode },
+              });
+            }
+            if (!existing) {
+              existing = await this.warehouseRepository.findOne({
+                where: { warehouse_name: row.outletDesc },
+              });
+            }
+            // If found by individual field, update all fields to match the source
+            if (existing) {
+              let needsUpdate = false;
+              if (existing.warehouse_ifs !== row.outletIFS) {
+                existing.warehouse_ifs = row.outletIFS;
+                needsUpdate = true;
+              }
+              if (existing.warehouse_code !== row.outletCode) {
+                existing.warehouse_code = row.outletCode;
+                needsUpdate = true;
+              }
+              if (existing.warehouse_name !== row.outletDesc) {
+                existing.warehouse_name = row.outletDesc;
+                needsUpdate = true;
+              }
+              if (existing.location_id !== row.brnID) {
+                existing.location_id = row.brnID;
+                needsUpdate = true;
+              }
+              if (existing.segment_id !== row.ownID) {
+                existing.segment_id = row.ownID;
+                needsUpdate = true;
+              }
+              if (existing.address !== row.address) {
+                existing.address = row.address ? row.address : "";
+                needsUpdate = true;
+              }
+              if (needsUpdate) {
+                existing.access_key_id = accessKeyId;
+                await this.warehouseRepository.save(existing);
+                success++;
+              }
+              continue;
+            }
+          } else {
+            // If found by full unique combination, update location_id, brand_id, address if needed
+            let needsUpdate = false;
+            if (existing.location_id !== row.brnID) {
+              existing.location_id = row.brnID;
+              needsUpdate = true;
+            }
+            if (existing.segment_id !== row.ownID) {
+              existing.segment_id = row.ownID;
+              needsUpdate = true;
+            }
+            if (existing.address !== row.address) {
+              existing.address = row.address ? row.address : "";
+              needsUpdate = true;
+            }
+            if (needsUpdate) {
+              existing.access_key_id = accessKeyId;
+              await this.warehouseRepository.save(existing);
+              success++;
+            }
+            continue;
+          }
+          // 3. If not found at all, insert new warehouse
+          const warehouse = this.warehouseRepository.create({
+            warehouse_ifs: row.outletIFS,
+            warehouse_code: row.outletCode,
+            warehouse_name: row.outletDesc,
+            location_id: row.brnID,
+            segment_id: row.ownID,
+            address: row.address ? row.address : "",
+            status_id: 1,
+            warehouse_type_id: 1,
+            access_key_id: accessKeyId,
+          });
+          await this.warehouseRepository.save(warehouse);
+          success++;
+        } catch (err) {
+          failed++;
+          await this.logRepository.save(
+            this.logRepository.create({
+              error: err.message,
+              row_data: JSON.stringify(row),
+            })
+          );
+        }
+      }
+    }
+    await sourceConn.end();
+    return { success, failed };
+  }
+
+  async scheduledPullAndInsertFromOutlets(
+    batchSize: number,
+    accessKeyId: number
+  ): Promise<void> {
+    await this.pullAndInsertFromOutlets(batchSize, accessKeyId);
+  }
+}
