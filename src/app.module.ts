@@ -49,6 +49,7 @@ import { UserAuditTrailModule } from "./modules/users/user-audit-trail.module";
 import { SchedulersModule } from "./modules/schedulers/schedulers.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { ModulesModule } from "./modules/modules/modules.module";
+import { ApiModule } from "./modules/api/api.module";
 @Module({
   imports: [
     // Configuration
@@ -106,6 +107,7 @@ import { ModulesModule } from "./modules/modules/modules.module";
     SchedulersModule,
     AuthModule,
     ModulesModule,
+    ApiModule,
   ],
   providers: [
     EmailService,
