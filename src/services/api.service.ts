@@ -320,7 +320,7 @@ export class ApiService {
             "warehouses.warehouse_ifs as store_ifs",
             "warehouses.warehouse_code as store_code",
             "warehouse_hurdles.ss_hurdle_qty as hurdle_qty",
-            "warehouse_hurdles.hurdle_date as hurdle_date",
+            "DATE_FORMAT(warehouse_hurdles.hurdle_date, '%Y-%m-%d') as hurdle_date",
           ]);
 
         queryBuilder.where(
