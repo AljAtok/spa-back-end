@@ -615,6 +615,24 @@ export class TransactionsService {
         })
       );
       await this.detailRepo.save(detailEntities);
+
+      // Update assigned employees on transactional
+      await this.dataSource.query(
+        `
+        UPDATE transaction_details a
+        INNER JOIN warehouse_employees b ON a.warehouse_id = b.warehouse_id
+        SET
+          a.assigned_ss = b.assigned_ss,
+          a.assigned_ah = b.assigned_ah,
+          a.assigned_bch = b.assigned_bch,
+          a.assigned_gbch = b.assigned_gbch,
+          a.assigned_rh = b.assigned_rh,
+          a.assigned_grh = b.assigned_grh
+        WHERE b.status_id = 1 AND a.transaction_header_id = ?
+      `,
+        [header.id]
+      );
+
       // Audit trail for transaction creation
       await this.userAuditTrailCreateService.create(
         {
@@ -755,14 +773,20 @@ export class TransactionsService {
       allowedLocationIds = userLocations.map((ul) => ul.location_id);
     }
 
-    // Build query for details with joins to header, warehouse, status, location, and region
+    // Build query for details with joins to header, warehouse, status, location, region, and employees for assigned roles
     const qb = this.detailRepo
       .createQueryBuilder("detail")
       .leftJoinAndSelect("detail.transaction_header", "header")
       .leftJoinAndSelect("header.location", "location")
       .leftJoinAndSelect("location.region", "region")
       .leftJoinAndSelect("header.status", "status")
-      .leftJoinAndSelect("detail.warehouse", "warehouse");
+      .leftJoinAndSelect("detail.warehouse", "warehouse")
+      .leftJoinAndSelect("detail.assignedSs", "assignedSs")
+      .leftJoinAndSelect("detail.assignedAh", "assignedAh")
+      .leftJoinAndSelect("detail.assignedBch", "assignedBch")
+      .leftJoinAndSelect("detail.assignedGbch", "assignedGbch")
+      .leftJoinAndSelect("detail.assignedRh", "assignedRh")
+      .leftJoinAndSelect("detail.assignedGrh", "assignedGrh");
 
     // Filter by allowed locations (user)
     if (allowedLocationIds && allowedLocationIds.length > 0) {
@@ -801,33 +825,8 @@ export class TransactionsService {
     const details = await qb.getMany();
     if (!details.length) return [];
 
-    // Get all warehouse_ids from details
-    const warehouseIds = [...new Set(details.map((d) => d.warehouse_id))];
-
-    // Get all WarehouseEmployee records for these warehouses
-    const warehouseEmployeeRepo = this.dataSource.getRepository(
-      require("../entities/WarehouseEmployee").WarehouseEmployee
-    );
-    const warehouseEmployees = await warehouseEmployeeRepo.find({
-      where: { warehouse_id: In(warehouseIds), status_id: 1 },
-      relations: [
-        "assignedSs",
-        "assignedAh",
-        "assignedBch",
-        "assignedGbch",
-        "assignedRh",
-        "assignedGrh",
-      ],
-    });
-    // Map warehouse_id to WarehouseEmployee
-    const warehouseEmployeeMap = new Map();
-    for (const we of warehouseEmployees) {
-      warehouseEmployeeMap.set(we.warehouse_id, we);
-    }
-
-    // Build report
+    // Build report using employee names for assigned roles
     const report = details.map((detail) => {
-      const we = warehouseEmployeeMap.get(detail.warehouse_id);
       const header = detail.transaction_header;
       return {
         detail_id: detail.id,
@@ -841,23 +840,23 @@ export class TransactionsService {
         ss_hurdle_qty: detail.ss_hurdle_qty,
         rate: detail.rate,
         details_status_id: detail.status_id,
-        assigned_ss_name: we?.assignedSs
-          ? `${we.assignedSs.employee_first_name} ${we.assignedSs.employee_last_name}`
+        assigned_ss_name: detail.assignedSs
+          ? `${detail.assignedSs.employee_first_name} ${detail.assignedSs.employee_last_name}`
           : null,
-        assigned_ah_name: we?.assignedAh
-          ? `${we.assignedAh.employee_first_name} ${we.assignedAh.employee_last_name}`
+        assigned_ah_name: detail.assignedAh
+          ? `${detail.assignedAh.employee_first_name} ${detail.assignedAh.employee_last_name}`
           : null,
-        assigned_bch_name: we?.assignedBch
-          ? `${we.assignedBch.employee_first_name} ${we.assignedBch.employee_last_name}`
+        assigned_bch_name: detail.assignedBch
+          ? `${detail.assignedBch.employee_first_name} ${detail.assignedBch.employee_last_name}`
           : null,
-        assigned_gbch_name: we?.assignedGbch
-          ? `${we.assignedGbch.employee_first_name} ${we.assignedGbch.employee_last_name}`
+        assigned_gbch_name: detail.assignedGbch
+          ? `${detail.assignedGbch.employee_first_name} ${detail.assignedGbch.employee_last_name}`
           : null,
-        assigned_rh_name: we?.assignedRh
-          ? `${we.assignedRh.employee_first_name} ${we.assignedRh.employee_last_name}`
+        assigned_rh_name: detail.assignedRh
+          ? `${detail.assignedRh.employee_first_name} ${detail.assignedRh.employee_last_name}`
           : null,
-        assigned_grh_name: we?.assignedGrh
-          ? `${we.assignedGrh.employee_first_name} ${we.assignedGrh.employee_last_name}`
+        assigned_grh_name: detail.assignedGrh
+          ? `${detail.assignedGrh.employee_first_name} ${detail.assignedGrh.employee_last_name}`
           : null,
         // Transaction header info
         trans_number: header?.trans_number,

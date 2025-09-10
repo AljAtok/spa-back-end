@@ -1,4 +1,4 @@
-import { IsInt, IsNumber } from "class-validator";
+import { IsInt, IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 
 export class CreateTransactionDetailDto {
   @IsInt()
@@ -21,4 +21,28 @@ export class CreateTransactionDetailDto {
 
   @IsInt()
   status_id: number;
+
+  @IsOptional()
+  @IsInt()
+  assigned_ss: number | null;
+
+  @IsOptional()
+  @IsInt()
+  assigned_ah: number | null;
+
+  @IsOptional()
+  @IsInt()
+  assigned_bch?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  assigned_gbch?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  assigned_rh?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  assigned_grh?: number | null;
 }

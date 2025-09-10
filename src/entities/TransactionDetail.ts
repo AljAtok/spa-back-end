@@ -8,6 +8,7 @@ import {
 import { TransactionHeader } from "./TransactionHeader";
 import { Warehouse } from "./Warehouse";
 import { Status } from "./Status";
+import { Employee } from "./Employee";
 
 @Entity({ name: "transaction_details" })
 export class TransactionDetail {
@@ -49,4 +50,46 @@ export class TransactionDetail {
 
   @Column({ type: "decimal", precision: 18, scale: 2, nullable: true })
   budget_volume_monthly: number;
+
+  @Column({ nullable: true })
+  assigned_ss: number;
+
+  @Column({ nullable: true })
+  assigned_ah: number;
+
+  @Column({ nullable: true })
+  assigned_bch: number;
+
+  @Column({ nullable: true })
+  assigned_gbch: number;
+
+  @Column({ nullable: true })
+  assigned_rh: number;
+
+  @Column({ nullable: true })
+  assigned_grh: number;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_ss" })
+  assignedSs: Employee;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_ah" })
+  assignedAh: Employee;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_bch" })
+  assignedBch: Employee;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_gbch" })
+  assignedGbch: Employee;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_rh" })
+  assignedRh: Employee;
+
+  @ManyToOne(() => Employee)
+  @JoinColumn({ name: "assigned_grh" })
+  assignedGrh: Employee;
 }
