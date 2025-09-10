@@ -14,18 +14,38 @@ const logger = createLogger({
   ),
   transports: [
     new transports.Console(), // Log to console
-    // In a real application, you might add file transports,
-    // or transports for external logging services like Sentry, Loggly, etc.
-    // new transports.File({ filename: 'error.log', level: 'error' }),
-    // new transports.File({ filename: 'combined.log' }),
+    // File transports for production logging
+    new transports.File({
+      filename: "logs/error.log",
+      level: "error",
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+      tailable: true,
+    }),
+    new transports.File({
+      filename: "logs/combined.log",
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+      tailable: true,
+    }),
   ],
   exceptionHandlers: [
     new transports.Console(),
-    // new transports.File({ filename: 'exceptions.log' }),
+    new transports.File({
+      filename: "logs/exceptions.log",
+      maxsize: 5242880, // 5MB
+      maxFiles: 3,
+      tailable: true,
+    }),
   ],
   rejectionHandlers: [
     new transports.Console(),
-    // new transports.File({ filename: 'rejections.log' }),
+    new transports.File({
+      filename: "logs/rejections.log",
+      maxsize: 5242880, // 5MB
+      maxFiles: 3,
+      tailable: true,
+    }),
   ],
 });
 

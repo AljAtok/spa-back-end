@@ -304,6 +304,10 @@ export class ApiService {
   ): Promise<any> {
     switch (endpoint) {
       case "warehouse-hurdles":
+        const defaultDate = new Date();
+        defaultDate.setDate(1);
+        const formattedDate = defaultDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+
         const queryBuilder = this.warehouseHurdleRepository
           .createQueryBuilder("warehouse_hurdles")
           .leftJoin(
@@ -312,15 +316,20 @@ export class ApiService {
             "warehouse_hurdles.warehouse_id = warehouses.id"
           )
           .select([
-            "warehouses.warehouse_name as warehouse_name",
-            "warehouses.warehouse_ifs as warehouse_ifs",
-            "warehouses.warehouse_code as warehouse_code",
+            "warehouses.warehouse_name as store_name",
+            "warehouses.warehouse_ifs as store_ifs",
+            "warehouses.warehouse_code as store_code",
             "warehouse_hurdles.ss_hurdle_qty as hurdle_qty",
+            "warehouse_hurdles.hurdle_date as hurdle_date",
           ]);
 
-        queryBuilder.where("warehouse_hurdles.status_id = :statusId", {
-          statusId: queryParams.status_id ?? 7,
-        });
+        queryBuilder.where(
+          "warehouse_hurdles.status_id = :statusId AND warehouse_hurdles.hurdle_date = :hurdleDate",
+          {
+            statusId: queryParams.status_id ?? 7,
+            hurdleDate: queryParams.hurdle_date ?? formattedDate,
+          }
+        );
 
         queryBuilder.orderBy("warehouses.warehouse_ifs", "ASC");
 
