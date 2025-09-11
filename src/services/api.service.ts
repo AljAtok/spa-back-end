@@ -6,6 +6,7 @@ import { ApiAuthAccess } from "../entities/ApiAuthAccess";
 import { ApiLogs } from "../entities/ApiLogs";
 import { WarehouseHurdle } from "../entities/WarehouseHurdle";
 import { WarehouseHurdleCategory } from "../entities/WarehouseHurdleCategory";
+import * as mysql from "mysql2/promise";
 
 @Injectable()
 export class ApiService {
@@ -110,23 +111,39 @@ export class ApiService {
     } catch (error) {
       statusCode = error.status || 500;
       responseData = { error: error.message };
+      // Truncate params for store-crew-assignments
+      let logResponse = responseData;
+      if (
+        (endpoint === "store-crew-assignments" || endpoint === "stores") &&
+        Array.isArray(responseData)
+      ) {
+        logResponse = { count: responseData.length };
+      }
       await this.logApiRequest(
         apiKeyEntity.id,
         endpoint,
         "GET",
         queryParams,
-        responseData,
+        logResponse,
         statusCode
       );
       throw error;
     }
 
+    // Truncate params for store-crew-assignments
+    let logResponse = responseData;
+    if (
+      (endpoint === "store-crew-assignments" || endpoint === "stores") &&
+      Array.isArray(responseData)
+    ) {
+      logResponse = { count: responseData.length };
+    }
     await this.logApiRequest(
       apiKeyEntity.id,
       endpoint,
       "GET",
       queryParams,
-      responseData,
+      logResponse,
       statusCode
     );
     return responseData;
@@ -302,6 +319,12 @@ export class ApiService {
     endpoint: string,
     queryParams: any
   ): Promise<any> {
+    const sourceConn = await mysql.createConnection({
+      host: "192.168.74.121",
+      user: "ctgi_cms_rem_usr",
+      password: "B@v1CM$r3m0t3Localdba@C3sS",
+      database: "ctgi_sems",
+    });
     switch (endpoint) {
       case "warehouse-hurdles":
         const defaultDate = new Date();
@@ -342,6 +365,75 @@ export class ApiService {
             : {},
           relations: ["status"],
         });
+
+      case "store-crew-assignments":
+        const modified_date = queryParams.modified_date ?? "";
+
+        const whereClauses = [
+          "a.asgnStatID = 1",
+          "(a.endDate IS NULL or a.endDate > CURDATE())",
+        ];
+
+        const sqlParams: any[] = [];
+        if (modified_date) {
+          whereClauses.push("a.tsModified >= ?");
+          sqlParams.push(modified_date);
+        }
+
+        const query = `
+          SELECT
+            b.crewCode as crew_code,
+            b.surName AS crew_last_name,
+            b.firstName AS crew_first_name,
+            b.mi AS crew_middle_initial,
+            c.outletIFS AS store_ifs,
+            c.outletCode AS store_code,
+            c.outletDesc AS store_name,
+            DATE_FORMAT(a.effectivityDate, '%Y-%m-%d') AS assignment_effectivity_date,
+            DATE_FORMAT(a.endDate, '%Y-%m-%d') AS assignment_end_date,
+            DATE_FORMAT(a.tsCreated, '%Y-%m-%d %H:%i:%s') AS ts_created,
+            DATE_FORMAT(a.tsModified, '%Y-%m-%d %H:%i:%s') AS ts_modified
+          FROM
+            crew_outlet a
+            INNER JOIN crew b ON a.crewID = b.crewID
+            INNER JOIN outlets c ON a.outletID = c.outletID 
+          WHERE
+            ${whereClauses.join(" AND ")}
+            ORDER BY a.tsCreated
+        `;
+
+        const [rows] = await sourceConn.execute(query, sqlParams);
+        return rows;
+
+      case "stores":
+        const store_modified_date = queryParams.modified_date ?? "";
+
+        const whereClauses2 = ["a.status = 1"];
+
+        const sqlParams2: any[] = [];
+        if (store_modified_date) {
+          whereClauses2.push("a.tsModified >= ?");
+          sqlParams2.push(store_modified_date);
+        }
+
+        const query2 = `
+          SELECT
+            a.outletIFS AS store_ifs,
+            a.outletCode AS store_code,
+            a.outletDesc AS store_name,
+            b.branchCode as branch_code,
+            b.branch AS branch_name,
+            DATE_FORMAT(a.tsModified, '%Y-%m-%d %H:%i:%s') AS ts_modified
+          FROM
+            outlets a
+            INNER JOIN branches b ON a.brnID = b.brnID 
+          WHERE
+            ${whereClauses2.join(" AND ")}
+          ORDER BY a.outletIFS
+        `;
+
+        const [store_rows] = await sourceConn.execute(query2, sqlParams2);
+        return store_rows;
 
       default:
         throw new HttpException(
