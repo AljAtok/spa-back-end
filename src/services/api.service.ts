@@ -423,10 +423,13 @@ export class ApiService {
             a.outletDesc AS store_name,
             b.branchCode as branch_code,
             b.branch AS branch_name,
+            a.address,
+	          c.townGroup as town_group,
             DATE_FORMAT(a.tsModified, '%Y-%m-%d %H:%i:%s') AS ts_modified
           FROM
             outlets a
-            INNER JOIN branches b ON a.brnID = b.brnID 
+            INNER JOIN branches b ON a.brnID = b.brnID
+            INNER JOIN town_groups c ON a.tgID = c.tgID
           WHERE
             ${whereClauses2.join(" AND ")}
           ORDER BY a.outletIFS
