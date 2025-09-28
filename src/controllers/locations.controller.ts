@@ -25,7 +25,7 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @Get()
-  @RequirePermissions({ module: "LOCATIONS", action: "VIEW" })
+  @RequirePermissions({ module: "LOCATIONS", action: "DATA ACCESS" })
   async findAll(@Request() req) {
     const userId = req.user?.id;
     const roleId = req.user?.role_id;

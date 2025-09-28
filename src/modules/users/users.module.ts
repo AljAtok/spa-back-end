@@ -21,6 +21,7 @@ import { UserLoginSession } from "src/entities/UserLoginSession";
 import { JwtService } from "@nestjs/jwt";
 import { UserSessionService } from "src/services/user-session.service";
 import { UserPermissionsService } from "src/services/user-permissions.service";
+import { UserAccessKeyController } from "src/controllers/user-access-key.controller";
 
 @Module({
   imports: [
@@ -39,7 +40,7 @@ import { UserPermissionsService } from "src/services/user-permissions.service";
       UserLoginSession,
     ]),
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, UserAccessKeyController],
   providers: [
     UsersService,
     UserAuditTrailCreateService,

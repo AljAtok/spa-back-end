@@ -24,7 +24,10 @@ export class PositionsController {
   constructor(private readonly positionsService: PositionsService) {}
 
   @Get()
-  @RequirePermissions({ module: "POSITIONS", action: "VIEW" })
+  @RequirePermissions(
+    { module: "POSITIONS", action: "DATA ACCESS" }
+    // { module: "POSITIONS", action: "VIEW" }
+  )
   async findAll() {
     return this.positionsService.findAll();
   }

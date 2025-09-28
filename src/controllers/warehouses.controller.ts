@@ -24,7 +24,7 @@ export class WarehousesController {
   constructor(private readonly warehousesService: WarehousesService) {}
 
   @Get("/stores/:warehouse_type_id")
-  @RequirePermissions({ module: "LOCATIONS", action: "VIEW" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "VIEW" })
   async findAll(
     @Param("warehouse_type_id", ParseIntPipe) warehouseTypeId: number,
     @Request() req
@@ -41,13 +41,13 @@ export class WarehousesController {
   }
 
   @Get(":id")
-  @RequirePermissions({ module: "WAREHOUSES", action: "VIEW" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "VIEW" })
   async findOne(@Param("id", ParseIntPipe) id: number) {
     return this.warehousesService.findOne(id);
   }
 
   @Post()
-  @RequirePermissions({ module: "WAREHOUSES", action: "ADD" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "ADD" })
   async create(@Body() createDto: CreateWarehouseDto, @Request() req) {
     const userId = req.user.id;
     const accessKeyId = req.user.current_access_key;
@@ -58,7 +58,7 @@ export class WarehousesController {
   }
 
   @Put(":id")
-  @RequirePermissions({ module: "WAREHOUSES", action: "EDIT" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "EDIT" })
   async update(
     @Param("id", ParseIntPipe) id: number,
     @Body() updateDto: UpdateWarehouseDto,
@@ -69,13 +69,13 @@ export class WarehousesController {
   }
 
   @Delete(":id")
-  @RequirePermissions({ module: "WAREHOUSES", action: "CANCEL" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "CANCEL" })
   async remove(@Param("id", ParseIntPipe) id: number) {
     return this.warehousesService.remove(id);
   }
 
   @Patch(":id/toggle-status-activate")
-  @RequirePermissions({ module: "WAREHOUSES", action: "ACTIVATE" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "ACTIVATE" })
   async toggleStatusActivate(
     @Param("id", ParseIntPipe) id: number,
     @Request() req
@@ -85,7 +85,7 @@ export class WarehousesController {
   }
 
   @Patch(":id/toggle-status-deactivate")
-  @RequirePermissions({ module: "WAREHOUSES", action: "DEACTIVATE" })
+  @RequirePermissions({ module: "TAKEOUTSTORES", action: "DEACTIVATE" })
   async toggleStatusDeactivate(
     @Param("id", ParseIntPipe) id: number,
     @Request() req

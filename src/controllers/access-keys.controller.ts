@@ -23,7 +23,7 @@ export class AccessKeysController {
   constructor(private readonly accessKeysService: AccessKeysService) {}
 
   @Get()
-  @RequirePermissions({ module: "ACCESS KEYS", action: "VIEW" })
+  @RequirePermissions({ module: "ACCESS KEYS", action: "DATA ACCESS" })
   async findAll() {
     return this.accessKeysService.findAll();
   }

@@ -24,7 +24,7 @@ export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
   @Get()
-  @RequirePermissions({ module: "MODULES", action: "VIEW" })
+  @RequirePermissions({ module: "MODULES", action: "DATA ACCESS" })
   async findAll() {
     return this.modulesService.findAll();
   }

@@ -1490,9 +1490,61 @@ export class UsersService {
         const roleActionPresets = await this.usersRepository.manager
           .getRepository("RoleActionPreset")
           .find({ where: { role_id: role.id, status_id: 1 } });
-        const roleLocationPresets = await this.usersRepository.manager
-          .getRepository("RoleLocationPreset")
-          .find({ where: { role_id: role.id, status_id: 1 } });
+
+        // Check if Location(s) column has values
+        let locationIds: number[] = [];
+        let useRoleLocationPresets = true;
+
+        if (row["Location(s)"] && String(row["Location(s)"]).trim() !== "") {
+          try {
+            // Parse comma-separated location names
+            const locationNames = String(row["Location(s)"])
+              .split(",")
+              .map((name: string) => name.trim())
+              .filter(Boolean);
+
+            // Look up locations by name
+            const locations = await this.locationRepository.find({
+              where: locationNames.map((name) => ({ location_name: name })),
+            });
+
+            // Check if at least one location was found
+            if (locations.length > 0) {
+              // At least one location found, use the ones that were found
+              locationIds = locations.map((loc) => loc.id);
+              useRoleLocationPresets = false;
+
+              // Log any locations that weren't found
+              if (locations.length < locationNames.length) {
+                const foundNames = locations.map((loc) => loc.location_name);
+                const notFound = locationNames.filter(
+                  (name) => !foundNames.includes(name)
+                );
+                logger.warn(
+                  `Some locations not found: ${notFound.join(", ")}. Using only the matched locations.`
+                );
+              }
+            } else {
+              // No locations found at all, log the issue and fall back to presets
+              logger.warn(
+                `No locations matched from: ${locationNames.join(", ")}. Falling back to role location presets.`
+              );
+            }
+          } catch (locError) {
+            logger.warn(
+              `Error processing location names: ${locError.message}. Falling back to role location presets.`
+            );
+          }
+        }
+
+        // If no locations specified or any error in location lookup, use role location presets
+        if (useRoleLocationPresets) {
+          const roleLocationPresets = await this.usersRepository.manager
+            .getRepository("RoleLocationPreset")
+            .find({ where: { role_id: role.id, status_id: 1 } });
+          locationIds = roleLocationPresets.map((preset) => preset.location_id);
+        }
+
         // 4. Check if user already exists (by user_name or email)
         let existingUser = await this.usersRepository.findOne({
           where: [{ user_name: row["Username"] }, { email: row["Email"] }],
@@ -1535,9 +1587,7 @@ export class UsersService {
               module_ids: preset.module_id,
               action_ids: [preset.action_id],
             })),
-            location_ids: roleLocationPresets.map(
-              (preset) => preset.location_id
-            ),
+            location_ids: locationIds,
           };
           await this.update(existingUser.id, updateUserDto);
           // Audit trail for update
@@ -1600,9 +1650,7 @@ export class UsersService {
             }
           }
           // Create user_locations ONCE per location
-          const uniqueLocationIds = Array.from(
-            new Set(roleLocationPresets.map((preset) => preset.location_id))
-          );
+          const uniqueLocationIds = Array.from(new Set(locationIds));
           for (const locationId of uniqueLocationIds) {
             await this.userLocationsRepository.save({
               user_id: savedUser.id,

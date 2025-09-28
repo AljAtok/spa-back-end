@@ -24,7 +24,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @RequirePermissions({ module: "ROLES", action: "VIEW" })
+  @RequirePermissions({ module: "ROLES", action: "DATA ACCESS" })
   async findAll(@Request() req) {
     return this.rolesService.findAll();
   }
