@@ -114,7 +114,9 @@ export class ApiService {
       // Truncate params for store-crew-assignments
       let logResponse = responseData;
       if (
-        (endpoint === "store-crew-assignments" || endpoint === "stores") &&
+        (endpoint === "store-crew-assignments" ||
+          endpoint === "stores" ||
+          endpoint === "suppliers") &&
         Array.isArray(responseData)
       ) {
         logResponse = { count: responseData.length };
@@ -133,7 +135,9 @@ export class ApiService {
     // Truncate params for store-crew-assignments
     let logResponse = responseData;
     if (
-      (endpoint === "store-crew-assignments" || endpoint === "stores") &&
+      (endpoint === "store-crew-assignments" ||
+        endpoint === "stores" ||
+        endpoint === "suppliers") &&
       Array.isArray(responseData)
     ) {
       logResponse = { count: responseData.length };
@@ -325,6 +329,14 @@ export class ApiService {
       password: "B@v1CM$r3m0t3Localdba@C3sS",
       database: "ctgi_sems",
     });
+
+    const bosSourceConn = await mysql.createConnection({
+      host: "192.168.74.214",
+      user: "dba_remote",
+      password: "Wdwaxwdadz#07",
+      database: "ctgi",
+    });
+
     switch (endpoint) {
       case "warehouse-hurdles":
         const defaultDate = new Date();
@@ -437,6 +449,49 @@ export class ApiService {
 
         const [store_rows] = await sourceConn.execute(query2, sqlParams2);
         return store_rows;
+
+      case "suppliers":
+        const supplier_modified_date = queryParams.modified_date ?? "";
+
+        const whereClauses3 = ["a.ACTIVE = 1"];
+
+        const sqlParams3: any[] = [];
+        if (supplier_modified_date) {
+          whereClauses3.push("a.LASTUPDATED >= ?");
+          sqlParams3.push(supplier_modified_date);
+        }
+
+        const suppQuery = `
+          SELECT
+            a.SUPPNO AS supp_no,
+            a.SUPPNAME AS supp_name,
+            a.EMAIL AS email,
+            CONCAT(
+              CONCAT_WS(
+                ' ',
+                NULLIF( b.STREET, '' ),
+                NULLIF( b.BARANGAY, '' ),
+              NULLIF( b.CITY, '' )),
+            IF
+              (
+                c.PROVINCENAME IS NULL 
+                OR c.PROVINCENAME = '',
+                '',
+              CONCAT( ', ', c.PROVINCENAME )) 
+            ) AS supp_address,
+            DATE_FORMAT( a.LASTUPDATED, '%Y-%m-%d %H:%i:%s' ) AS ts_modified 
+          FROM
+            suppliers a
+            INNER JOIN addresses b ON a.SUPPNO = b.REFID 
+            AND b.COMPANY = 'CTGI' 
+            AND b.BRANCH = 'HO'
+            INNER JOIN provinces c ON b.PROVINCE = c.PROVINCE 
+          WHERE
+            ${whereClauses3.join(" AND ")}
+        `;
+
+        const [supp_rows] = await bosSourceConn.execute(suppQuery, sqlParams3);
+        return supp_rows;
 
       default:
         throw new HttpException(
