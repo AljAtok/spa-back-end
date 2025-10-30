@@ -18,8 +18,10 @@ export class WarehouseDwhService {
     batchSize = 1000,
     accessKeyId: number = 1
   ): Promise<{
-    success: number;
+    inserted: number;
     failed: number;
+    fullUniqueUpdates: number;
+    individualUpdates: number;
   }> {
     const sourceConn = await mysql.createConnection({
       host: "192.168.74.121",
@@ -28,10 +30,12 @@ export class WarehouseDwhService {
       database: "ctgi_sems",
     });
     const [rows] = await sourceConn.execute(
-      `SELECT outletIFS, outletCode, outletDesc, brnID, ownID, address, status FROM outlets`
+      `SELECT outletIFS, outletCode, outletDesc, brnID, ownID, address, status FROM outlets where status < 7`
     );
-    let success = 0;
+    let inserted = 0;
     let failed = 0;
+    let fullUniqueUpdates = 0;
+    let individualUpdates = 0;
     const total = (rows as any[]).length;
     for (let i = 0; i < total; i += batchSize) {
       let batch = (rows as any[]).slice(i, i + batchSize);
@@ -115,7 +119,7 @@ export class WarehouseDwhService {
                 existing.segment_id = row.ownID;
                 needsUpdate = true;
               }
-              if (existing.address !== row.address) {
+              if (existing.address !== row.address && existing.address != "") {
                 existing.address = row.address ? row.address : "";
                 needsUpdate = true;
               }
@@ -126,13 +130,14 @@ export class WarehouseDwhService {
               if (needsUpdate) {
                 existing.access_key_id = accessKeyId;
                 await this.warehouseRepository.save(existing);
-                success++;
+                individualUpdates++;
               }
               continue;
             }
           } else {
             // If found by full unique combination, update location_id, brand_id, address if needed
             let needsUpdate = false;
+            let remarks = "";
             if (existing.location_id !== row.brnID) {
               existing.location_id = row.brnID;
               needsUpdate = true;
@@ -141,7 +146,7 @@ export class WarehouseDwhService {
               existing.segment_id = row.ownID;
               needsUpdate = true;
             }
-            if (existing.address !== row.address) {
+            if (existing.address !== row.address && existing.address != "") {
               existing.address = row.address ? row.address : "";
               needsUpdate = true;
             }
@@ -152,7 +157,7 @@ export class WarehouseDwhService {
             if (needsUpdate) {
               existing.access_key_id = accessKeyId;
               await this.warehouseRepository.save(existing);
-              success++;
+              fullUniqueUpdates++;
             }
             continue;
           }
@@ -170,7 +175,7 @@ export class WarehouseDwhService {
             access_key_id: accessKeyId,
           });
           await this.warehouseRepository.save(warehouse);
-          success++;
+          inserted++;
         } catch (err) {
           failed++;
           await this.logRepository.save(
@@ -182,8 +187,9 @@ export class WarehouseDwhService {
         }
       }
     }
+
     await sourceConn.end();
-    return { success, failed };
+    return { inserted, failed, fullUniqueUpdates, individualUpdates };
   }
 
   async scheduledPullAndInsertFromOutlets(
