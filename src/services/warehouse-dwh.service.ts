@@ -43,6 +43,18 @@ export class WarehouseDwhService {
         const ifsKey = row.outletIFS;
         const codeKey = row.outletCode;
         const nameKey = row.outletDesc;
+        const statusMap: { [key: number]: number } = {
+          1: 8,
+          0: 9,
+          2: 10,
+          3: 11,
+          4: 12,
+        };
+        const statusNum = Number(row.status);
+        row.remStatusId = statusMap.hasOwnProperty(statusNum)
+          ? statusMap[statusNum]
+          : 8;
+
         if (
           seenIfs.has(ifsKey) ||
           seenCode.has(codeKey) ||
@@ -107,6 +119,10 @@ export class WarehouseDwhService {
                 existing.address = row.address ? row.address : "";
                 needsUpdate = true;
               }
+              if (existing.rem_status_id !== row.remStatusId) {
+                existing.rem_status_id = row.remStatusId;
+                needsUpdate = true;
+              }
               if (needsUpdate) {
                 existing.access_key_id = accessKeyId;
                 await this.warehouseRepository.save(existing);
@@ -129,6 +145,10 @@ export class WarehouseDwhService {
               existing.address = row.address ? row.address : "";
               needsUpdate = true;
             }
+            if (existing.rem_status_id !== row.remStatusId) {
+              existing.rem_status_id = row.remStatusId;
+              needsUpdate = true;
+            }
             if (needsUpdate) {
               existing.access_key_id = accessKeyId;
               await this.warehouseRepository.save(existing);
@@ -145,6 +165,7 @@ export class WarehouseDwhService {
             segment_id: row.ownID,
             address: row.address ? row.address : "",
             status_id: 1,
+            rem_status_id: row.remStatusId,
             warehouse_type_id: 1,
             access_key_id: accessKeyId,
           });

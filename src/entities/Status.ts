@@ -46,9 +46,11 @@ export class Status {
   // Relationship for status_id in Company
   @OneToMany(() => Company, (company) => company.status)
   companies!: Company[];
+
   // Relationship for status_id in AccessKey
   @OneToMany(() => AccessKey, (accessKey) => accessKey.status)
   accessKeys!: AccessKey[];
+
   // Relationship for status_id in Theme
   @OneToMany(() => Theme, (theme) => theme.status)
   themes!: Theme[];

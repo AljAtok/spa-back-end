@@ -52,6 +52,7 @@ export class WarehousesService {
         "location",
         "segment",
         "status",
+        "remStatus",
         "createdBy",
         "updatedBy",
       ],
@@ -76,6 +77,7 @@ export class WarehousesService {
       location_name: w.location ? w.location.location_name : null,
       segment_name: w.segment ? w.segment.segment_name : null,
       status_name: w.status ? w.status.status_name : null,
+      rem_status_name: w.remStatus ? w.remStatus.status_name : null,
       created_user: w.createdBy
         ? `${w.createdBy.first_name} ${w.createdBy.last_name}`
         : null,

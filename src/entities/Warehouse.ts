@@ -58,6 +58,9 @@ export class Warehouse {
   @Column({ nullable: true })
   access_key_id: number;
 
+  @Column({ default: 8 })
+  rem_status_id: number;
+
   @CreateDateColumn({ type: "timestamp" })
   created_at: Date;
 
@@ -79,6 +82,14 @@ export class Warehouse {
   @ManyToOne(() => Status, { eager: false })
   @JoinColumn({ name: "status_id" })
   status: Status;
+
+  @ManyToOne(() => Status, {
+    eager: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  })
+  @JoinColumn({ name: "rem_status_id" })
+  remStatus: Status;
 
   @ManyToOne(() => User, { eager: false })
   @JoinColumn({ name: "created_by" })

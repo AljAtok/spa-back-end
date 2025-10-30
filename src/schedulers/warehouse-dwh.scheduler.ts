@@ -11,6 +11,6 @@ export class WarehouseDwhScheduler {
   async handleCron() {
     const accessKeyId = 1; // CTGI key
     const batchSize = 1000; // Default batch size
-    await this.dwhService.pullAndInsertFromOutlets(accessKeyId, batchSize);
+    await this.dwhService.pullAndInsertFromOutlets(batchSize, accessKeyId);
   }
 }
