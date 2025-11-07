@@ -354,8 +354,9 @@ export class WarehouseEmployeesController {
           method: "uploadExcel",
           raw_data: JSON.stringify({
             file: file.originalname,
-            records: records.slice(0, 65535),
-          }),
+            // records: records.slice(0, 65535),
+            records: records,
+          }).slice(0, 65535),
           description: `Bulk upload via Excel: ${summary.inserted_count} inserted, ${summary.updated_count} updated, ${summary.errors.length} errors.`,
           status_id: summary.errors.length === 0 ? 1 : 2,
         },
